@@ -31,10 +31,40 @@ async function handleButton(interaction) {
             }
             else if (customId.startsWith('ticket_transcript_')) {
                 const channelId = customId.split('_')[2];
-                await this.handleTranscript(interaction, channelId);
+                await handleTranscript(interaction, channelId);
             }
             else if (customId === 'ticket_quick_create') {
-                await ticketHandler.createTicket(interaction, 'general');
+                // Show modal for quick ticket creation
+                const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+                const config = require('../config.js');
+
+                const modal = new ModalBuilder()
+                    .setCustomId('ticket_confirm_general')
+                    .setTitle('🎫 Quick Support Ticket');
+
+                const reasonInput = new TextInputBuilder()
+                    .setCustomId('ticket_reason')
+                    .setLabel('Please describe your issue')
+                    .setStyle(TextInputStyle.Paragraph)
+                    .setPlaceholder('Describe your general support request in detail...')
+                    .setRequired(true)
+                    .setMinLength(10)
+                    .setMaxLength(1000);
+
+                const priorityInput = new TextInputBuilder()
+                    .setCustomId('ticket_priority')
+                    .setLabel('Priority Level (Low/Medium/High)')
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder('Low')
+                    .setRequired(false)
+                    .setMaxLength(10);
+
+                const firstActionRow = new ActionRowBuilder().addComponents(reasonInput);
+                const secondActionRow = new ActionRowBuilder().addComponents(priorityInput);
+
+                modal.addComponents(firstActionRow, secondActionRow);
+
+                await interaction.showModal(modal);
             }
             else if (customId.startsWith('suggestion_approve_')) {
                 const suggestionHandler = require('./suggestionHandler.js');

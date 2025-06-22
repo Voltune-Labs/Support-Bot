@@ -35,6 +35,12 @@ module.exports = {
             subcommand
                 .setName('panel')
                 .setDescription('Create a ticket panel (Staff only)')
+                .addChannelOption(option =>
+                    option
+                        .setName('channel')
+                        .setDescription('Channel to send the panel to (defaults to current channel)')
+                        .setRequired(false)
+                )
         )
         .addSubcommand(subcommand =>
             subcommand
@@ -99,6 +105,8 @@ module.exports = {
             });
         }
 
+        const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+
         const panelEmbed = new EmbedBuilder()
             .setColor(config.colors.primary)
             .setTitle('🎫 Support Tickets')
@@ -149,10 +157,30 @@ module.exports = {
                     .setEmoji('⚡')
             );
 
-        await interaction.reply({
-            embeds: [panelEmbed],
-            components: [selectMenu, quickButton]
-        });
+        try {
+            // Send panel to target channel
+            await targetChannel.send({
+                embeds: [panelEmbed],
+                components: [selectMenu, quickButton]
+            });
+
+            // Confirm to the moderator
+            const confirmMessage = targetChannel.id === interaction.channel.id
+                ? '✅ Ticket panel has been created in this channel!'
+                : `✅ Ticket panel has been sent to ${targetChannel}!`;
+
+            await interaction.reply({
+                content: confirmMessage,
+                ephemeral: true
+            });
+
+        } catch (error) {
+            console.error('[ERROR] Failed to send ticket panel:', error);
+            await interaction.reply({
+                content: '❌ Failed to send ticket panel. Make sure I have permission to send messages in that channel.',
+                ephemeral: true
+            });
+        }
     },
 
     async handleClose(interaction) {

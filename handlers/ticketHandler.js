@@ -186,6 +186,119 @@ class TicketHandler {
         }
     }
 
+    async createTicketWithDetails(interaction, category, reason, priority) {
+        try {
+            await interaction.deferReply({ ephemeral: true });
+
+            const guild = interaction.guild;
+            const user = interaction.user;
+            const categoryInfo = config.tickets.ticketCategories[category];
+
+            // Check if user has reached ticket limit
+            const existingTickets = guild.channels.cache.filter(channel =>
+                channel.name.startsWith(`ticket-${user.username.toLowerCase()}`) &&
+                channel.parentId === config.channels.ticketCategory
+            );
+
+            if (existingTickets.size >= config.tickets.maxTicketsPerUser) {
+                return interaction.editReply({
+                    content: `❌ You have reached the maximum number of tickets (${config.tickets.maxTicketsPerUser}). Please close an existing ticket before creating a new one.`
+                });
+            }
+
+            // Create the ticket channel
+            const ticketChannel = await guild.channels.create({
+                name: `ticket-${user.username.toLowerCase()}-${Date.now().toString().slice(-4)}`,
+                type: 0, // Text channel
+                parent: config.channels.ticketCategory,
+                permissionOverwrites: [
+                    {
+                        id: guild.roles.everyone.id,
+                        deny: ['ViewChannel']
+                    },
+                    {
+                        id: user.id,
+                        allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AttachFiles']
+                    },
+                    ...config.tickets.supportRoles.map(roleId => ({
+                        id: roleId,
+                        allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AttachFiles', 'ManageMessages']
+                    }))
+                ]
+            });
+
+            // Create detailed ticket embed
+            const ticketEmbed = new EmbedBuilder()
+                .setColor(config.colors.primary)
+                .setTitle(`${categoryInfo.emoji} ${categoryInfo.name}`)
+                .setDescription(`**Ticket created by:** ${user}\n**Priority:** ${priority}\n\n**Issue Description:**\n${reason}`)
+                .addFields(
+                    { name: '📋 Category', value: categoryInfo.description, inline: true },
+                    { name: '⚡ Priority', value: priority, inline: true },
+                    { name: '🕐 Created', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true }
+                )
+                .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+                .setFooter({ text: `Ticket ID: ${ticketChannel.id}` })
+                .setTimestamp();
+
+            // Create action buttons
+            const actionRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`ticket_claim_${ticketChannel.id}`)
+                        .setLabel('Claim Ticket')
+                        .setStyle(ButtonStyle.Primary)
+                        .setEmoji('🙋'),
+                    new ButtonBuilder()
+                        .setCustomId(`ticket_close_${ticketChannel.id}`)
+                        .setLabel('Close Ticket')
+                        .setStyle(ButtonStyle.Danger)
+                        .setEmoji('🔒'),
+                    new ButtonBuilder()
+                        .setCustomId(`ticket_transcript_${ticketChannel.id}`)
+                        .setLabel('Transcript')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setEmoji('📄')
+                );
+
+            // Send welcome message
+            await ticketChannel.send({
+                content: `${user} Welcome to your support ticket!\n\n${config.tickets.supportRoles.map(roleId => `<@&${roleId}>`).join(' ')} A support team member will be with you shortly.`,
+                embeds: [ticketEmbed],
+                components: [actionRow]
+            });
+
+            // Confirm ticket creation
+            await interaction.editReply({
+                content: `✅ Your ${categoryInfo.name.toLowerCase()} ticket has been created! Please check ${ticketChannel} for assistance.`
+            });
+
+            // Log ticket creation
+            const Logger = require('../utils/logger.js');
+            await Logger.log(interaction.client, 'ticket', {
+                action: 'Created',
+                user: user,
+                channel: ticketChannel,
+                category: categoryInfo.name,
+                priority: priority,
+                reason: reason
+            });
+
+        } catch (error) {
+            console.error('[ERROR] Failed to create ticket with details:', error);
+
+            const errorMessage = {
+                content: '❌ Failed to create ticket. Please try again later or contact an administrator.'
+            };
+
+            if (interaction.deferred) {
+                await interaction.editReply(errorMessage);
+            } else {
+                await interaction.reply({ ...errorMessage, ephemeral: true });
+            }
+        }
+    }
+
     async closeTicket(interaction, channelId) {
         try {
             const data = await this.getTicketData();

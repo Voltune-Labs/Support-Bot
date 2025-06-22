@@ -98,7 +98,7 @@ class Logger {
     }
 
     static createTicketEmbed(data) {
-        return new EmbedBuilder()
+        const embed = new EmbedBuilder()
             .setTitle(`Ticket ${data.action}`)
             .setColor(this.getColorForAction(data.action))
             .addFields(
@@ -107,6 +107,17 @@ class Logger {
                 { name: 'Category', value: data.category || 'General', inline: true }
             )
             .setTimestamp();
+
+        // Add additional details if available
+        if (data.priority) {
+            embed.addFields({ name: 'Priority', value: data.priority, inline: true });
+        }
+
+        if (data.reason) {
+            embed.addFields({ name: 'Reason', value: data.reason.length > 1024 ? data.reason.substring(0, 1021) + '...' : data.reason, inline: false });
+        }
+
+        return embed;
     }
 
     static createSuggestionEmbed(data) {

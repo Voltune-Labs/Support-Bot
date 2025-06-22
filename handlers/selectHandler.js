@@ -1,4 +1,6 @@
 const ticketHandler = require('./ticketHandler.js');
+const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const config = require('../config.js');
 
 async function handleSelect(interaction) {
         const customId = interaction.customId;
@@ -6,7 +8,36 @@ async function handleSelect(interaction) {
         try {
             if (customId === 'ticket_category_select') {
                 const category = interaction.values[0];
-                await ticketHandler.createTicket(interaction, category);
+                const categoryInfo = config.tickets.ticketCategories[category];
+
+                // Create confirmation modal
+                const modal = new ModalBuilder()
+                    .setCustomId(`ticket_confirm_${category}`)
+                    .setTitle(`${categoryInfo.emoji} ${categoryInfo.name}`);
+
+                const reasonInput = new TextInputBuilder()
+                    .setCustomId('ticket_reason')
+                    .setLabel('Please describe your issue')
+                    .setStyle(TextInputStyle.Paragraph)
+                    .setPlaceholder(`Describe your ${categoryInfo.name.toLowerCase()} request in detail...`)
+                    .setRequired(true)
+                    .setMinLength(10)
+                    .setMaxLength(1000);
+
+                const priorityInput = new TextInputBuilder()
+                    .setCustomId('ticket_priority')
+                    .setLabel('Priority Level (Low/Medium/High)')
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder('Low')
+                    .setRequired(false)
+                    .setMaxLength(10);
+
+                const firstActionRow = new ActionRowBuilder().addComponents(reasonInput);
+                const secondActionRow = new ActionRowBuilder().addComponents(priorityInput);
+
+                modal.addComponents(firstActionRow, secondActionRow);
+
+                await interaction.showModal(modal);
             }
             else {
                 await interaction.reply({
@@ -16,7 +47,7 @@ async function handleSelect(interaction) {
             }
         } catch (error) {
             console.error('[ERROR] Select handler error:', error);
-            
+
             const errorMessage = {
                 content: '❌ An error occurred while processing your request.',
                 ephemeral: true
@@ -29,6 +60,5 @@ async function handleSelect(interaction) {
             }
         }
     }
-}
 
 module.exports = { handleSelect };

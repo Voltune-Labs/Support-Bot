@@ -13,6 +13,14 @@ async function handleModal(interaction) {
                     ephemeral: true
                 });
             }
+            else if (customId.startsWith('ticket_confirm_')) {
+                const category = customId.split('_')[2];
+                const reason = interaction.fields.getTextInputValue('ticket_reason');
+                const priority = interaction.fields.getTextInputValue('ticket_priority') || 'Low';
+
+                const ticketHandler = require('./ticketHandler.js');
+                await ticketHandler.createTicketWithDetails(interaction, category, reason, priority);
+            }
             else {
                 await interaction.reply({
                     content: '❌ Unknown modal interaction.',
@@ -34,6 +42,5 @@ async function handleModal(interaction) {
             }
         }
     }
-}
 
 module.exports = { handleModal };
