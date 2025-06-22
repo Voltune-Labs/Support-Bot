@@ -1,0 +1,22 @@
+{
+  "name": "support-bot",
+  "version": "1.0.0",
+  "description": "A comprehensive Discord support bot with tickets, suggestions, moderation, and logging",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["discord", "bot", "support", "tickets", "moderation"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@discordjs/builders": "^1.11.2",
+    "@discordjs/rest": "^2.5.1",
+    "discord-api-types": "^0.38.12",
+    "discord.js": "^14.20.0",
+    "dotenv": "^16.5.0",
+    "fs-extra": "^11.3.0"
+  }
+}
