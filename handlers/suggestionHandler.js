@@ -32,7 +32,8 @@ class SuggestionHandler {
 
     async getSuggestionData() {
         try {
-            return await fs.readJson(this.suggestionsPath);
+            const data = await fs.readJson(this.suggestionsPath);
+            return data;
         } catch (error) {
             console.error('[ERROR] Failed to read suggestion data:', error);
             return { suggestions: {}, counter: 0 };
@@ -318,10 +319,16 @@ class SuggestionHandler {
 
     async approveSuggestion(interaction, suggestionId) {
         if (!PermissionManager.canManageSuggestions(interaction.member)) {
-            return interaction.reply({
+            const errorMessage = {
                 content: '❌ You do not have permission to manage suggestions.',
                 ephemeral: true
-            });
+            };
+
+            if (interaction.replied || interaction.deferred) {
+                return interaction.followUp(errorMessage);
+            } else {
+                return interaction.reply(errorMessage);
+            }
         }
 
         try {
@@ -329,10 +336,16 @@ class SuggestionHandler {
             const suggestion = data.suggestions[suggestionId];
 
             if (!suggestion) {
-                return interaction.reply({
+                const errorMessage = {
                     content: '❌ Suggestion not found.',
                     ephemeral: true
-                });
+                };
+
+                if (interaction.replied || interaction.deferred) {
+                    return interaction.followUp(errorMessage);
+                } else {
+                    return interaction.reply(errorMessage);
+                }
             }
 
             suggestion.status = 'approved';
@@ -346,32 +359,52 @@ class SuggestionHandler {
             await this.sendToResultsChannel(interaction, suggestionId, suggestion);
             await this.disableSuggestionInteractions(interaction, suggestionId, suggestion);
 
-            if (interaction.deferred) {
+            const successMessage = `✅ Suggestion #${suggestionId} has been approved!`;
+
+            if (interaction.replied) {
+                return interaction.followUp({
+                    content: successMessage,
+                    ephemeral: true
+                });
+            } else if (interaction.deferred) {
                 return interaction.editReply({
-                    content: `✅ Suggestion #${suggestionId} has been approved!`
+                    content: successMessage
                 });
             } else {
                 return interaction.reply({
-                    content: `✅ Suggestion #${suggestionId} has been approved!`,
+                    content: successMessage,
                     ephemeral: true
                 });
             }
 
         } catch (error) {
             console.error('[ERROR] Failed to approve suggestion:', error);
-            return interaction.reply({
+
+            const errorMessage = {
                 content: '❌ Failed to approve suggestion. Please try again later.',
                 ephemeral: true
-            });
+            };
+
+            if (interaction.replied || interaction.deferred) {
+                return interaction.followUp(errorMessage);
+            } else {
+                return interaction.reply(errorMessage);
+            }
         }
     }
 
     async denySuggestion(interaction, suggestionId) {
         if (!PermissionManager.canManageSuggestions(interaction.member)) {
-            return interaction.reply({
+            const errorMessage = {
                 content: '❌ You do not have permission to manage suggestions.',
                 ephemeral: true
-            });
+            };
+
+            if (interaction.replied || interaction.deferred) {
+                return interaction.followUp(errorMessage);
+            } else {
+                return interaction.reply(errorMessage);
+            }
         }
 
         try {
@@ -379,40 +412,179 @@ class SuggestionHandler {
             const suggestion = data.suggestions[suggestionId];
 
             if (!suggestion) {
-                return interaction.reply({
+                const errorMessage = {
                     content: '❌ Suggestion not found.',
                     ephemeral: true
-                });
+                };
+
+                if (interaction.replied || interaction.deferred) {
+                    return interaction.followUp(errorMessage);
+                } else {
+                    return interaction.reply(errorMessage);
+                }
             }
 
-            suggestion.status = 'denied';
-            suggestion.reviewedBy = interaction.user.id;
-            suggestion.reviewedAt = Date.now();
-            suggestion.updatedAt = Date.now();
-
-            await this.saveSuggestionData(data);
-            await this.updateSuggestionMessage(interaction, suggestion);
-            await this.updateManagementMessage(interaction, suggestionId, suggestion);
-            await this.sendToResultsChannel(interaction, suggestionId, suggestion);
-            await this.disableSuggestionInteractions(interaction, suggestionId, suggestion);
-
-            if (interaction.deferred) {
-                return interaction.editReply({
-                    content: `❌ Suggestion #${suggestionId} has been denied.`
-                });
-            } else {
-                return interaction.reply({
-                    content: `❌ Suggestion #${suggestionId} has been denied.`,
-                    ephemeral: true
-                });
+            // If suggestion is anonymous, offer option to reveal user
+            if (suggestion.anonymous) {
+                return await this.showAnonymousDenyOptions(interaction, suggestionId, suggestion);
             }
+
+            // Process normal denial
+            await this.processSuggestionDenial(interaction, suggestionId, suggestion, false);
 
         } catch (error) {
             console.error('[ERROR] Failed to deny suggestion:', error);
-            return interaction.reply({
+
+            const errorMessage = {
                 content: '❌ Failed to deny suggestion. Please try again later.',
                 ephemeral: true
+            };
+
+            if (interaction.replied || interaction.deferred) {
+                return interaction.followUp(errorMessage);
+            } else {
+                return interaction.reply(errorMessage);
+            }
+        }
+    }
+
+    async showAnonymousDenyOptions(interaction, suggestionId, suggestion) {
+        const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+
+        const optionsEmbed = new EmbedBuilder()
+            .setColor(config.colors.warning)
+            .setTitle('🔍 Anonymous Suggestion Denial')
+            .setDescription(`You are about to deny an **anonymous** suggestion #${suggestionId}.\n\nWould you like to reveal the user's identity for moderation purposes?`)
+            .addFields(
+                { name: '📝 Suggestion', value: `**${suggestion.title}**\n${suggestion.description}`, inline: false },
+                { name: '⚠️ Note', value: 'Revealing the user will show their identity in the logs for moderation actions.', inline: false }
+            )
+            .setTimestamp();
+
+        const actionButtons = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`suggestion_deny_anonymous_${suggestionId}`)
+                    .setLabel('Deny (Keep Anonymous)')
+                    .setStyle(ButtonStyle.Danger)
+                    .setEmoji('❌'),
+                new ButtonBuilder()
+                    .setCustomId(`suggestion_deny_reveal_${suggestionId}`)
+                    .setLabel('Deny & Reveal User')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setEmoji('🔍'),
+                new ButtonBuilder()
+                    .setCustomId(`suggestion_deny_cancel_${suggestionId}`)
+                    .setLabel('Cancel')
+                    .setStyle(ButtonStyle.Primary)
+                    .setEmoji('↩️')
+            );
+
+        if (interaction.replied) {
+            return interaction.followUp({
+                embeds: [optionsEmbed],
+                components: [actionButtons],
+                ephemeral: true
             });
+        } else if (interaction.deferred) {
+            return interaction.editReply({
+                embeds: [optionsEmbed],
+                components: [actionButtons]
+            });
+        } else {
+            return interaction.reply({
+                embeds: [optionsEmbed],
+                components: [actionButtons],
+                ephemeral: true
+            });
+        }
+    }
+
+    async processSuggestionDenial(interaction, suggestionId, suggestion, revealUser = false) {
+        // Get fresh data to ensure we have the latest state
+        const data = await this.getSuggestionData();
+        const currentSuggestion = data.suggestions[suggestionId];
+
+        currentSuggestion.status = 'denied';
+        currentSuggestion.reviewedBy = interaction.user.id;
+        currentSuggestion.reviewedAt = Date.now();
+        currentSuggestion.updatedAt = Date.now();
+
+        // If revealing user, temporarily make it non-anonymous for logging
+        const wasAnonymous = currentSuggestion.anonymous;
+        if (revealUser && wasAnonymous) {
+            currentSuggestion.anonymous = false;
+            currentSuggestion.revealedBy = interaction.user.id;
+            currentSuggestion.revealedAt = Date.now();
+        }
+
+        await this.saveSuggestionData(data);
+        await this.updateSuggestionMessage(interaction, currentSuggestion);
+        await this.updateManagementMessage(interaction, suggestionId, currentSuggestion);
+        await this.sendToResultsChannel(interaction, suggestionId, currentSuggestion);
+        await this.disableSuggestionInteractions(interaction, suggestionId, currentSuggestion);
+
+        // Send moderation log if user was revealed
+        if (revealUser && wasAnonymous) {
+            await this.logUserReveal(interaction, suggestionId, currentSuggestion);
+        }
+
+        // Restore anonymity for display purposes but keep the reveal log
+        if (revealUser && wasAnonymous) {
+            currentSuggestion.anonymous = true;
+            await this.saveSuggestionData(data);
+        }
+
+        const responseMessage = revealUser ?
+            `❌ Suggestion #${suggestionId} has been denied and the anonymous user has been revealed in the logs.` :
+            `❌ Suggestion #${suggestionId} has been denied.`;
+
+        // Check if this was called from the anonymous denial buttons
+        if (interaction.replied) {
+            return interaction.followUp({
+                content: responseMessage,
+                ephemeral: true
+            });
+        } else if (interaction.deferred) {
+            return interaction.editReply({
+                content: responseMessage,
+                embeds: [],
+                components: []
+            });
+        } else {
+            return interaction.reply({
+                content: responseMessage,
+                ephemeral: true
+            });
+        }
+    }
+
+    async logUserReveal(interaction, suggestionId, suggestion) {
+        try {
+            const logsChannel = interaction.guild.channels.cache.get(config.channels.suggestionLogs);
+            if (!logsChannel) return;
+
+            const user = await interaction.client.users.fetch(suggestion.userId).catch(() => null);
+
+            const revealEmbed = new EmbedBuilder()
+                .setColor(config.colors.error)
+                .setTitle('🔍 Anonymous User Revealed')
+                .setDescription(`**Moderator ${interaction.user.tag}** revealed the identity of an anonymous suggestion for moderation purposes.`)
+                .addFields(
+                    { name: '📝 Suggestion ID', value: `#${suggestionId}`, inline: true },
+                    { name: '👤 Revealed User', value: user ? `${user.tag} (${user.id})` : `Unknown User (${suggestion.userId})`, inline: true },
+                    { name: '🔨 Revealed By', value: `${interaction.user.tag} (${interaction.user.id})`, inline: true },
+                    { name: '📋 Suggestion Title', value: suggestion.title, inline: false },
+                    { name: '⚠️ Reason', value: 'User identity revealed for potential moderation action', inline: false }
+                )
+                .setThumbnail(user ? user.displayAvatarURL({ dynamic: true }) : null)
+                .setFooter({ text: 'This action is logged for transparency and accountability' })
+                .setTimestamp();
+
+            await logsChannel.send({ embeds: [revealEmbed] });
+
+        } catch (error) {
+            console.error('[ERROR] Failed to log user reveal:', error);
         }
     }
 
@@ -597,7 +769,9 @@ class SuggestionHandler {
                 .addFields(
                     {
                         name: '**Submitter**',
-                        value: suggestion.anonymous ? 'Anonymous' : (user ? user.username : 'Unknown User'),
+                        value: suggestion.anonymous ?
+                            (suggestion.revealedBy ? `Anonymous (Revealed: ${user ? user.username : 'Unknown User'})` : 'Anonymous') :
+                            (user ? user.username : 'Unknown User'),
                         inline: true
                     },
                     {
@@ -752,12 +926,6 @@ class SuggestionHandler {
 
             const thread = suggestionMessage.thread;
 
-            // Lock the thread
-            await thread.setLocked(true);
-
-            // Archive the thread
-            await thread.setArchived(true);
-
             // Send final message in thread before locking
             const statusEmojis = {
                 'approved': '✅',
@@ -768,9 +936,11 @@ class SuggestionHandler {
             const finalMessage = `${statusEmojis[suggestion.status]} **This suggestion has been ${suggestion.status}.**\n\n` +
                 `The discussion thread has been locked and archived. Thank you for your participation!`;
 
-            // We need to unarchive temporarily to send the message, then re-archive
-            await thread.setArchived(false);
+            // Send the final message first
             await thread.send(finalMessage);
+
+            // Then lock and archive the thread
+            await thread.setLocked(true);
             await thread.setArchived(true);
 
         } catch (error) {

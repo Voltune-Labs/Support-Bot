@@ -68,27 +68,124 @@ async function handleButton(interaction) {
             }
             else if (customId.startsWith('suggestion_approve_')) {
                 const suggestionHandler = require('./suggestionHandler.js');
-                const suggestionId = customId.split('_')[2];
+                const suggestionId = parseInt(customId.split('_')[2]);
                 await suggestionHandler.approveSuggestion(interaction, suggestionId);
             }
+            // Handle specific deny buttons first (more specific patterns)
+            else if (customId.startsWith('suggestion_deny_anonymous_')) {
+                const suggestionHandler = require('./suggestionHandler.js');
+                const suggestionId = parseInt(customId.split('_')[3]);
+
+                const data = await suggestionHandler.getSuggestionData();
+                const suggestion = data.suggestions[suggestionId];
+
+                if (!suggestion) {
+                    if (interaction.replied || interaction.deferred) {
+                        return interaction.editReply({
+                            content: `❌ Suggestion #${suggestionId} not found.`,
+                            embeds: [],
+                            components: []
+                        });
+                    } else {
+                        return interaction.update({
+                            content: `❌ Suggestion #${suggestionId} not found.`,
+                            embeds: [],
+                            components: []
+                        });
+                    }
+                }
+
+                // Update the interaction to remove the buttons first
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.editReply({
+                        content: '⏳ Processing denial...',
+                        embeds: [],
+                        components: []
+                    });
+                } else {
+                    await interaction.update({
+                        content: '⏳ Processing denial...',
+                        embeds: [],
+                        components: []
+                    });
+                }
+
+                await suggestionHandler.processSuggestionDenial(interaction, suggestionId, suggestion, false);
+            }
+            else if (customId.startsWith('suggestion_deny_reveal_')) {
+                const suggestionHandler = require('./suggestionHandler.js');
+                const suggestionId = parseInt(customId.split('_')[3]);
+
+                const data = await suggestionHandler.getSuggestionData();
+                const suggestion = data.suggestions[suggestionId];
+
+                if (!suggestion) {
+                    if (interaction.replied || interaction.deferred) {
+                        return interaction.editReply({
+                            content: `❌ Suggestion #${suggestionId} not found.`,
+                            embeds: [],
+                            components: []
+                        });
+                    } else {
+                        return interaction.update({
+                            content: `❌ Suggestion #${suggestionId} not found.`,
+                            embeds: [],
+                            components: []
+                        });
+                    }
+                }
+
+                // Update the interaction to remove the buttons first
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.editReply({
+                        content: '⏳ Processing denial and revealing user...',
+                        embeds: [],
+                        components: []
+                    });
+                } else {
+                    await interaction.update({
+                        content: '⏳ Processing denial and revealing user...',
+                        embeds: [],
+                        components: []
+                    });
+                }
+
+                await suggestionHandler.processSuggestionDenial(interaction, suggestionId, suggestion, true);
+            }
+            else if (customId.startsWith('suggestion_deny_cancel_')) {
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.editReply({
+                        content: '↩️ Denial cancelled.',
+                        embeds: [],
+                        components: []
+                    });
+                } else {
+                    await interaction.update({
+                        content: '↩️ Denial cancelled.',
+                        embeds: [],
+                        components: []
+                    });
+                }
+            }
+            // Handle general deny button (must be after specific deny buttons)
             else if (customId.startsWith('suggestion_deny_')) {
                 const suggestionHandler = require('./suggestionHandler.js');
-                const suggestionId = customId.split('_')[2];
+                const suggestionId = parseInt(customId.split('_')[2]);
                 await suggestionHandler.denySuggestion(interaction, suggestionId);
             }
             else if (customId.startsWith('suggestion_upvote_')) {
                 const suggestionHandler = require('./suggestionHandler.js');
-                const suggestionId = customId.split('_')[2];
+                const suggestionId = parseInt(customId.split('_')[2]);
                 await suggestionHandler.voteSuggestion(interaction, suggestionId, 'upvote');
             }
             else if (customId.startsWith('suggestion_downvote_')) {
                 const suggestionHandler = require('./suggestionHandler.js');
-                const suggestionId = customId.split('_')[2];
+                const suggestionId = parseInt(customId.split('_')[2]);
                 await suggestionHandler.voteSuggestion(interaction, suggestionId, 'downvote');
             }
             else if (customId.startsWith('suggestion_consider_')) {
                 const suggestionHandler = require('./suggestionHandler.js');
-                const suggestionId = customId.split('_')[2];
+                const suggestionId = parseInt(customId.split('_')[2]);
                 await suggestionHandler.considerSuggestion(interaction, suggestionId);
             }
             else {
