@@ -38,10 +38,22 @@ module.exports = {
             console.log(`[INFO] Member join logged for ${member.user.tag}`);
 
             // Auto-role assignment could be added here
-            // const autoRole = member.guild.roles.cache.get('ROLE_ID');
-            // if (autoRole) {
-            //     await member.roles.add(autoRole);
-            // }
+            const autoRoleId = config.roles.autoRole;
+            if (!autoRoleId) {
+                return;
+            }
+
+            const autoRole = member.guild.roles.cache.get(autoRoleId);
+            if (!autoRole) {
+                console.error(`[ERROR] Auto-role not found: ${autoRoleId}`);
+                return;
+            }
+
+            try {
+                await member.roles.add(autoRole).catch(() => {});
+            } catch (error) {
+                console.error(`[ERROR] Failed to assign auto-role to ${member.user.tag}:`, error);
+            }
 
         } catch (error) {
             console.error('[ERROR] Error in guildMemberAdd event:', error);

@@ -31,6 +31,7 @@ module.exports = {
         moderator: '1386148300234821792',       // Moderator role
         admin: '1386148298431402044',           // Admin role
         muted: '1386438702795853824',           // Muted role
+        autoRole: '1386148301073678489'         // Auto-assigned role
     },
 
     // Ticket System Configuration
@@ -130,5 +131,5 @@ module.exports = {
         maxEmbedFieldLength: 1024,              // Max length for embed fields
         // Auto-delete settings
         tempMessageDeleteTime: 5000,            // Delete temporary messages after 5 seconds
-    }
+    },
 };
