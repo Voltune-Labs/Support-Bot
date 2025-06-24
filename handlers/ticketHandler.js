@@ -190,25 +190,26 @@ class TicketHandler {
         try {
             await interaction.deferReply({ ephemeral: true });
 
+            const data = await this.getTicketData();
             const guild = interaction.guild;
             const user = interaction.user;
+            const userId = user.id;
             const categoryInfo = config.tickets.ticketCategories[category];
 
-            // Check if user has reached ticket limit
-            const existingTickets = guild.channels.cache.filter(channel =>
-                channel.name.startsWith(`ticket-${user.username.toLowerCase()}`) &&
-                channel.parentId === config.channels.ticketCategory
-            );
+            // Check if user has reached ticket limit using proper data structure
+            const userTickets = data.userTickets[userId] || [];
+            const activeTickets = userTickets.filter(ticketId => data.tickets[ticketId]?.active);
 
-            if (existingTickets.size >= config.tickets.maxTicketsPerUser) {
+            if (activeTickets.length >= config.tickets.maxTicketsPerUser) {
                 return interaction.editReply({
-                    content: `❌ You have reached the maximum number of tickets (${config.tickets.maxTicketsPerUser}). Please close an existing ticket before creating a new one.`
+                    content: `❌ You have reached the maximum number of active tickets (${config.tickets.maxTicketsPerUser}). Please close an existing ticket before creating a new one.`
                 });
             }
 
             // Create the ticket channel
+            const ticketNumber = Object.keys(data.tickets).length + 1;
             const ticketChannel = await guild.channels.create({
-                name: `ticket-${user.username.toLowerCase()}-${Date.now().toString().slice(-4)}`,
+                name: `ticket-${ticketNumber}-${user.username.toLowerCase()}`,
                 type: 0, // Text channel
                 parent: config.channels.ticketCategory,
                 permissionOverwrites: [
@@ -230,7 +231,7 @@ class TicketHandler {
             // Create detailed ticket embed
             const ticketEmbed = new EmbedBuilder()
                 .setColor(config.colors.primary)
-                .setTitle(`${categoryInfo.emoji} ${categoryInfo.name}`)
+                .setTitle(`🎫 Ticket #${ticketNumber} - ${categoryInfo.name}`)
                 .setDescription(`**Ticket created by:** ${user}\n**Priority:** ${priority}\n\n**Issue Description:**\n${reason}`)
                 .addFields(
                     { name: '📋 Category', value: categoryInfo.description, inline: true },
@@ -267,6 +268,29 @@ class TicketHandler {
                 embeds: [ticketEmbed],
                 components: [actionRow]
             });
+
+            // Save ticket data
+            const ticketId = ticketChannel.id;
+            data.tickets[ticketId] = {
+                id: ticketId,
+                number: ticketNumber,
+                userId: userId,
+                category: category,
+                active: true,
+                claimed: false,
+                claimedBy: null,
+                createdAt: Date.now(),
+                messages: [],
+                reason: reason,
+                priority: priority
+            };
+
+            if (!data.userTickets[userId]) {
+                data.userTickets[userId] = [];
+            }
+            data.userTickets[userId].push(ticketId);
+
+            await this.saveTicketData(data);
 
             // Confirm ticket creation
             await interaction.editReply({
