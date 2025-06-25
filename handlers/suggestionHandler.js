@@ -15,6 +15,8 @@ const path = require('path');
 class SuggestionHandler {
     constructor() {
         this.suggestionsPath = path.join(__dirname, '../data/suggestions.json');
+        this.lastReminderTime = 0; // Track last reminder time to avoid spam
+        this.reminderCooldown = 300000; // 5 minutes cooldown between reminders
         this.ensureSuggestionData();
     }
 
@@ -171,6 +173,32 @@ class SuggestionHandler {
                         } catch (error) {
                             console.error('[ERROR] Failed to add suggestion author to thread:', error);
                         }
+                    }
+
+                    // Send reminder message in the main suggestion channel (with cooldown)
+                    const currentTime = Date.now();
+                    if (currentTime - this.lastReminderTime > this.reminderCooldown) {
+                        const reminderEmbed = new EmbedBuilder()
+                            .setColor('#5865F2')
+                            .setTitle('💡 Want to make a suggestion?')
+                            .setDescription('Use the `/suggest create` command to submit your own suggestion!\n\n' +
+                                '**How to suggest:**\n' +
+                                '• Use `/suggest create` for a quick suggestion\n' +
+                                '• Use `/suggest modal` for a detailed form\n' +
+                                '• Keep suggestions constructive and relevant\n' +
+                                '• Check if your idea has already been suggested')
+                            .setFooter({ text: 'Suggestion System', iconURL: interaction.guild.iconURL() })
+                            .setTimestamp();
+
+                        // Send the reminder message with a delay to avoid spam
+                        setTimeout(async () => {
+                            try {
+                                await suggestionChannel.send({ embeds: [reminderEmbed] });
+                                this.lastReminderTime = currentTime;
+                            } catch (error) {
+                                console.error('[ERROR] Failed to send suggestion reminder:', error);
+                            }
+                        }, 2000); // 2 second delay
                     }
 
                     console.log(`[INFO] Created discussion thread for suggestion #${suggestionId}`);

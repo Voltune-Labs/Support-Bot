@@ -107,34 +107,40 @@ class TicketHandler {
             });
 
             // Create ticket embed and buttons
+            const categoryInfo = config.tickets.ticketCategories[category] || { name: 'General Support', emoji: '🎫', description: 'General support request' };
             const ticketEmbed = new EmbedBuilder()
                 .setColor(config.colors.primary)
-                .setTitle(`🎫 Ticket #${ticketNumber}`)
-                .setDescription(`Hello ${interaction.user}, thank you for creating a ticket!\n\nPlease describe your issue and a staff member will assist you shortly.`)
+                .setTitle(`${categoryInfo.emoji} Ticket #${ticketNumber}`)
+                .setDescription(`**Welcome to your support ticket!**\n\nHello ${interaction.user}, thank you for creating a ticket. Please describe your issue in detail and a staff member will assist you shortly.\n\n*Please be patient and provide as much information as possible to help us resolve your issue quickly.*`)
                 .addFields(
-                    { name: 'Category', value: config.tickets.ticketCategories[category]?.name || 'General Support', inline: true },
-                    { name: 'Created by', value: `${interaction.user}`, inline: true },
-                    { name: 'Status', value: '🟢 Open', inline: true }
+                    { name: '📋 Category', value: categoryInfo.name, inline: true },
+                    { name: '👤 Created by', value: `${interaction.user}`, inline: true },
+                    { name: '📊 Status', value: '🟢 Open', inline: true },
+                    { name: '🕐 Created', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true },
+                    { name: '🆔 Ticket ID', value: `\`${ticketChannel.id}\``, inline: true },
+                    { name: '📝 Instructions', value: 'Please describe your issue clearly and wait for staff assistance.', inline: false }
                 )
+                .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
+                .setFooter({ text: `Ticket System • ${interaction.guild.name}`, iconURL: interaction.guild.iconURL() })
                 .setTimestamp();
 
             const ticketButtons = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setCustomId(`ticket_close_${ticketChannel.id}`)
-                        .setLabel('Close Ticket')
-                        .setStyle(ButtonStyle.Danger)
-                        .setEmoji('🔒'),
-                    new ButtonBuilder()
                         .setCustomId(`ticket_claim_${ticketChannel.id}`)
                         .setLabel('Claim Ticket')
-                        .setStyle(ButtonStyle.Primary)
+                        .setStyle(ButtonStyle.Success)
                         .setEmoji('✋'),
                     new ButtonBuilder()
                         .setCustomId(`ticket_transcript_${ticketChannel.id}`)
-                        .setLabel('Generate Transcript')
+                        .setLabel('Transcript')
                         .setStyle(ButtonStyle.Secondary)
-                        .setEmoji('📄')
+                        .setEmoji('📄'),
+                    new ButtonBuilder()
+                        .setCustomId(`ticket_close_${ticketChannel.id}`)
+                        .setLabel('Close Ticket')
+                        .setStyle(ButtonStyle.Danger)
+                        .setEmoji('🔒')
                 );
 
             await ticketChannel.send({
@@ -229,17 +235,29 @@ class TicketHandler {
             });
 
             // Create detailed ticket embed
+            const priorityEmojis = {
+                'Low': '🟢',
+                'Medium': '🟡',
+                'High': '🔴'
+            };
+            const priorityEmoji = priorityEmojis[priority] || '🟢';
+
             const ticketEmbed = new EmbedBuilder()
                 .setColor(config.colors.primary)
-                .setTitle(`🎫 Ticket #${ticketNumber} - ${categoryInfo.name}`)
-                .setDescription(`**Ticket created by:** ${user}\n**Priority:** ${priority}\n\n**Issue Description:**\n${reason}`)
+                .setTitle(`${categoryInfo.emoji} Ticket #${ticketNumber} - ${categoryInfo.name}`)
+                .setDescription(`**Welcome to your support ticket!**\n\nA staff member will be with you shortly. Please be patient and provide any additional information that might help resolve your issue.`)
                 .addFields(
-                    { name: '📋 Category', value: categoryInfo.description, inline: true },
-                    { name: '⚡ Priority', value: priority, inline: true },
-                    { name: '🕐 Created', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true }
+                    { name: '👤 Created by', value: `${user}`, inline: true },
+                    { name: '📋 Category', value: categoryInfo.name, inline: true },
+                    { name: '⚡ Priority', value: `${priorityEmoji} ${priority}`, inline: true },
+                    { name: '🕐 Created', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true },
+                    { name: '📊 Status', value: '🟢 Open', inline: true },
+                    { name: '🆔 Ticket ID', value: `\`${ticketChannel.id}\``, inline: true },
+                    { name: '📝 Issue Description', value: `\`\`\`\n${reason}\n\`\`\``, inline: false },
+                    { name: '💡 Category Info', value: categoryInfo.description, inline: false }
                 )
                 .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-                .setFooter({ text: `Ticket ID: ${ticketChannel.id}` })
+                .setFooter({ text: `Ticket System • ${interaction.guild.name}`, iconURL: interaction.guild.iconURL() })
                 .setTimestamp();
 
             // Create action buttons
@@ -248,18 +266,18 @@ class TicketHandler {
                     new ButtonBuilder()
                         .setCustomId(`ticket_claim_${ticketChannel.id}`)
                         .setLabel('Claim Ticket')
-                        .setStyle(ButtonStyle.Primary)
-                        .setEmoji('🙋'),
-                    new ButtonBuilder()
-                        .setCustomId(`ticket_close_${ticketChannel.id}`)
-                        .setLabel('Close Ticket')
-                        .setStyle(ButtonStyle.Danger)
-                        .setEmoji('🔒'),
+                        .setStyle(ButtonStyle.Success)
+                        .setEmoji('✋'),
                     new ButtonBuilder()
                         .setCustomId(`ticket_transcript_${ticketChannel.id}`)
                         .setLabel('Transcript')
                         .setStyle(ButtonStyle.Secondary)
-                        .setEmoji('📄')
+                        .setEmoji('📄'),
+                    new ButtonBuilder()
+                        .setCustomId(`ticket_close_${ticketChannel.id}`)
+                        .setLabel('Close Ticket')
+                        .setStyle(ButtonStyle.Danger)
+                        .setEmoji('🔒')
                 );
 
             // Send welcome message

@@ -107,70 +107,105 @@ module.exports = {
 
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
 
+        // Main panel embed with better organization
         const panelEmbed = new EmbedBuilder()
             .setColor(config.colors.primary)
-            .setTitle('🎫 Support Tickets')
-            .setDescription('Need help? Create a support ticket by selecting a category below.\n\nOur support team will assist you as soon as possible!')
+            .setTitle('🎫 Support Center')
+            .setDescription('**Welcome to our Support Center!**\n\nNeed assistance? Our support team is here to help you. Choose the appropriate category below to create a support ticket.\n\n*Please provide detailed information about your issue to help us assist you better.*')
             .addFields(
-                { 
-                    name: '📋 Available Categories', 
-                    value: Object.values(config.tickets.ticketCategories)
-                        .map(cat => `${cat.emoji} **${cat.name}** - ${cat.description}`)
-                        .join('\n'),
-                    inline: false 
+                {
+                    name: '🏁 Quick Start',
+                    value: '• **Quick Ticket**: For general questions and simple issues\n• **Category Selection**: Choose specific support type below\n• **Response Time**: Typically within 1-24 hours',
+                    inline: false
                 },
                 {
-                    name: '⏰ Response Time',
-                    value: 'We typically respond within 1-24 hours',
+                    name: '📋 Support Categories',
+                    value: Object.values(config.tickets.ticketCategories)
+                        .map(cat => `${cat.emoji} **${cat.name}**\n└ ${cat.description}`)
+                        .join('\n\n'),
+                    inline: false
+                },
+                {
+                    name: '📝 Before Creating a Ticket',
+                    value: '• Check if your question has been answered before\n• Be clear and descriptive about your issue\n• Include relevant screenshots or error messages\n• Be patient - our team will respond as soon as possible',
+                    inline: false
+                },
+                {
+                    name: '⚡ Quick Actions',
+                    value: 'Use the **Quick Ticket** button for general support',
                     inline: true
                 },
                 {
-                    name: '📝 Guidelines',
-                    value: 'Please be descriptive and patient',
+                    name: '🎯 Specific Issues',
+                    value: 'Use the dropdown menu for specialized support',
                     inline: true
                 }
             )
-            .setFooter({ text: 'Select a category below to create a ticket' })
+            .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
+            .setFooter({
+                text: `${interaction.guild.name} Support System • Choose an option below`,
+                iconURL: interaction.guild.iconURL()
+            })
             .setTimestamp();
 
-        const selectMenu = new ActionRowBuilder()
+        // Enhanced select menu with better styling
+        const categorySelectMenu = new ActionRowBuilder()
             .addComponents(
                 new StringSelectMenuBuilder()
                     .setCustomId('ticket_category_select')
-                    .setPlaceholder('Select a ticket category...')
+                    .setPlaceholder('🎯 Choose your support category...')
+                    .setMinValues(1)
+                    .setMaxValues(1)
                     .addOptions(
                         Object.entries(config.tickets.ticketCategories).map(([key, category]) => ({
                             label: category.name,
-                            description: category.description,
+                            description: `${category.description} - Specialized support`,
                             value: key,
                             emoji: category.emoji
                         }))
                     )
             );
 
-        const quickButton = new ActionRowBuilder()
+        // Enhanced button row with multiple options
+        const actionButtons = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId('ticket_quick_create')
-                    .setLabel('Quick Ticket')
-                    .setStyle(ButtonStyle.Primary)
-                    .setEmoji('⚡')
+                    .setLabel('Quick Support')
+                    .setStyle(ButtonStyle.Success)
+                    .setEmoji('⚡'),
+                new ButtonBuilder()
+                    .setCustomId('ticket_help_info')
+                    .setLabel('Help & FAQ')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setEmoji('❓'),
+                new ButtonBuilder()
+                    .setCustomId('ticket_status_check')
+                    .setLabel('Check Status')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setEmoji('📊')
             );
 
         try {
-            // Send panel to target channel
+            // Send enhanced panel to target channel
             await targetChannel.send({
                 embeds: [panelEmbed],
-                components: [selectMenu, quickButton]
+                components: [categorySelectMenu, actionButtons]
             });
 
-            // Confirm to the moderator
-            const confirmMessage = targetChannel.id === interaction.channel.id
-                ? '✅ Ticket panel has been created in this channel!'
-                : `✅ Ticket panel has been sent to ${targetChannel}!`;
+            // Send confirmation with additional info
+            const confirmEmbed = new EmbedBuilder()
+                .setColor(config.colors.success)
+                .setTitle('✅ Ticket Panel Created')
+                .setDescription(`The enhanced ticket panel has been successfully created in ${targetChannel}!`)
+                .addFields(
+                    { name: '📊 Features', value: '• Category selection dropdown\n• Quick support button\n• Help & FAQ button\n• Status check button', inline: true },
+                    { name: '🎯 Components', value: '• Modern embed design\n• Enhanced user guidance\n• Better organization', inline: true }
+                )
+                .setTimestamp();
 
             await interaction.reply({
-                content: confirmMessage,
+                embeds: [confirmEmbed],
                 ephemeral: true
             });
 
