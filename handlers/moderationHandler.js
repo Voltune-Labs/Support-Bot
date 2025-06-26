@@ -83,7 +83,18 @@ class ModerationHandler {
                 });
             }
 
-            if (PermissionManager.isStaff(target)) {
+            // Fetch the guild member to check permissions properly
+            let targetMember;
+            try {
+                targetMember = await interaction.guild.members.fetch(target.id);
+            } catch (error) {
+                return interaction.reply({
+                    content: '❌ User not found in this server.',
+                    ephemeral: true
+                });
+            }
+
+            if (PermissionManager.isStaff(targetMember)) {
                 return interaction.reply({
                     content: '❌ You cannot warn staff members.',
                     ephemeral: true
@@ -178,14 +189,23 @@ class ModerationHandler {
                 });
             }
 
-            if (PermissionManager.isStaff(target)) {
+            // Fetch the guild member to check permissions properly
+            let member;
+            try {
+                member = await interaction.guild.members.fetch(target.id);
+            } catch (error) {
+                return interaction.reply({
+                    content: '❌ User not found in this server.',
+                    ephemeral: true
+                });
+            }
+
+            if (PermissionManager.isStaff(member)) {
                 return interaction.reply({
                     content: '❌ You cannot mute staff members.',
                     ephemeral: true
                 });
             }
-
-            const member = await interaction.guild.members.fetch(target.id);
             const muteRole = interaction.guild.roles.cache.get(config.roles.muted);
 
             if (!muteRole) {
@@ -318,7 +338,18 @@ class ModerationHandler {
                 });
             }
 
-            if (PermissionManager.isStaff(target)) {
+            // Fetch the guild member to check permissions properly
+            let targetMember;
+            try {
+                targetMember = await interaction.guild.members.fetch(target.id);
+            } catch (error) {
+                return interaction.reply({
+                    content: '❌ User not found in this server.',
+                    ephemeral: true
+                });
+            }
+
+            if (PermissionManager.isStaff(targetMember)) {
                 return interaction.reply({
                     content: '❌ You cannot ban staff members.',
                     ephemeral: true
@@ -426,7 +457,18 @@ class ModerationHandler {
                 });
             }
 
-            if (PermissionManager.isStaff(target)) {
+            // Fetch the guild member to check permissions properly
+            let targetMember;
+            try {
+                targetMember = await interaction.guild.members.fetch(target.id);
+            } catch (error) {
+                return interaction.reply({
+                    content: '❌ User not found in this server.',
+                    ephemeral: true
+                });
+            }
+
+            if (PermissionManager.isStaff(targetMember)) {
                 return interaction.reply({
                     content: '❌ You cannot kick staff members.',
                     ephemeral: true

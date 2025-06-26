@@ -2,25 +2,53 @@ const config = require('../config.js');
 
 class PermissionManager {
     static hasRole(member, roleId) {
+        // Handle both User and GuildMember objects
+        if (!member || !member.roles || !member.roles.cache) {
+            return false;
+        }
         return member.roles.cache.has(roleId);
     }
 
     static isStaff(member) {
-        return this.hasRole(member, config.roles.staff) || 
-               this.hasRole(member, config.roles.moderator) || 
+        // Handle both User and GuildMember objects
+        if (!member) return false;
+
+        // If it's a User object, we can't check roles
+        if (!member.roles || !member.roles.cache) {
+            return false;
+        }
+
+        return this.hasRole(member, config.roles.staff) ||
+               this.hasRole(member, config.roles.moderator) ||
                this.hasRole(member, config.roles.admin) ||
-               member.permissions.has('Administrator');
+               (member.permissions && member.permissions.has('Administrator'));
     }
 
     static isModerator(member) {
-        return this.hasRole(member, config.roles.moderator) || 
+        // Handle both User and GuildMember objects
+        if (!member) return false;
+
+        // If it's a User object, we can't check roles
+        if (!member.roles || !member.roles.cache) {
+            return false;
+        }
+
+        return this.hasRole(member, config.roles.moderator) ||
                this.hasRole(member, config.roles.admin) ||
-               member.permissions.has('Administrator');
+               (member.permissions && member.permissions.has('Administrator'));
     }
 
     static isAdmin(member) {
+        // Handle both User and GuildMember objects
+        if (!member) return false;
+
+        // If it's a User object, we can't check roles
+        if (!member.roles || !member.roles.cache) {
+            return false;
+        }
+
         return this.hasRole(member, config.roles.admin) ||
-               member.permissions.has('Administrator');
+               (member.permissions && member.permissions.has('Administrator'));
     }
 
     static canManageTickets(member) {
